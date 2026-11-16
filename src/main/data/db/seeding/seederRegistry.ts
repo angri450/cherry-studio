@@ -19,6 +19,7 @@ import { PoeChatEndpointUpgradeSeeder } from './seeders/PoeChatEndpointUpgradeSe
 import { PreferenceSeeder } from './seeders/preferenceSeeder'
 import { PresetProviderSeeder } from './seeders/presetProviderSeeder'
 import { RetiredAgentRuntimeSeeder } from './seeders/RetiredAgentRuntimeSeeder'
+import { RetiredBuiltinMcpServerSeeder } from './seeders/retiredBuiltinMcpServerSeeder'
 import { ScheduledTasksShortcutSeeder } from './seeders/scheduledTasksShortcutSeeder'
 import { SelectionActionItemsUpgradeSeeder } from './seeders/selectionActionItemsUpgradeSeeder'
 import { SidebarShortcutMigrationSeeder } from './seeders/sidebarShortcutMigrationSeeder'
@@ -59,5 +60,8 @@ export const seeders: ISeeder[] = [
   new TranslateLanguageSeeder(),
   new LocalModelSeeder(),
   new MiniAppSeeder(),
-  new BuiltinMcpServerSeeder()
+  new BuiltinMcpServerSeeder(),
+  // Runs after BuiltinMcpServerSeeder: the retired built-ins have left the preset
+  // catalog, so the rows that point at them can only be recognized by name.
+  new RetiredBuiltinMcpServerSeeder()
 ]

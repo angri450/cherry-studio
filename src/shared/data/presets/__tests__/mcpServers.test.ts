@@ -10,33 +10,18 @@ describe('PRESET_MCP_SERVERS', () => {
     expect(preset(BuiltinMcpServerNames.filesystem)?.args ?? []).toEqual([])
   })
 
-  it('models flomo and nowledge-mem as the HTTP endpoints they are', () => {
-    // The seeder writes these URLs onto installed rows, so the exact endpoint is the contract.
-    expect(preset(BuiltinMcpServerNames.flomo)).toEqual(
-      expect.objectContaining({ type: 'streamableHttp', baseUrl: 'https://flomoapp.com/mcp' })
-    )
-    expect(preset(BuiltinMcpServerNames.nowledgeMem)).toEqual(
-      expect.objectContaining({ type: 'streamableHttp', baseUrl: 'http://127.0.0.1:14242/mcp' })
-    )
-  })
-
   it('models the online-package server as stdio instead of in-memory', () => {
     expect(preset(BuiltinMcpServerNames.mcpAutoInstall)).toEqual(
       expect.objectContaining({ type: 'stdio', command: 'npx' })
     )
   })
 
-  it('models QVeris as a configurable hosted built-in server', () => {
-    expect(preset(BuiltinMcpServerNames.qveris)).toEqual(
-      expect.objectContaining({
-        type: 'streamableHttp',
-        baseUrl: 'https://mcp.qveris.ai/mcp',
-        // QVeris signs in via MCP OAuth by default; QVERIS_API_KEY stays as an optional fallback.
-        env: { QVERIS_API_KEY: '' },
-        shouldConfig: true,
-        isActive: false
-      })
-    )
+  it('ships no third-party credential built-ins', () => {
+    // A built-in that needs a vendor account makes the marketplace entry depend on a
+    // credential Cherry cannot ship, so only vendor-neutral servers remain.
+    for (const server of PRESET_MCP_SERVERS) {
+      expect(server.provider, server.name).not.toMatch(/flomo|qveris|dify|didi|brave|nowledge/i)
+    }
   })
 
   it('gives every non in-memory preset what it needs to connect', () => {

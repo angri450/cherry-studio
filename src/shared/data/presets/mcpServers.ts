@@ -30,32 +30,6 @@ const filesystemManualApprovalTools = ['write', 'edit', 'delete'] as const
 
 export const PRESET_MCP_SERVERS = freezePresets([
   {
-    name: BuiltinMcpServerNames.flomo,
-    reference: 'https://flomoapp.com',
-    type: 'streamableHttp',
-    baseUrl: 'https://flomoapp.com/mcp',
-    headers: { APP: 'Cherry Studio' },
-    isActive: false,
-    provider: 'flomo',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
-    name: BuiltinMcpServerNames.qveris,
-    reference: 'https://qveris.ai/docs/mcp-server',
-    type: 'streamableHttp',
-    baseUrl: 'https://mcp.qveris.ai/mcp',
-    headers: { APP: 'Cherry Studio' },
-    isActive: false,
-    env: {
-      QVERIS_API_KEY: ''
-    },
-    shouldConfig: true,
-    provider: 'QVeris',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
     name: BuiltinMcpServerNames.mcpAutoInstall,
     reference: 'https://cherryai.com/docs/en/advanced-basic/extensions/mcp/',
     type: 'stdio',
@@ -88,18 +62,6 @@ export const PRESET_MCP_SERVERS = freezePresets([
     isTrusted: true
   },
   {
-    name: BuiltinMcpServerNames.braveSearch,
-    type: 'inMemory',
-    isActive: false,
-    env: {
-      BRAVE_API_KEY: 'YOUR_API_KEY'
-    },
-    shouldConfig: true,
-    provider: 'CherryAI',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
     name: BuiltinMcpServerNames.fetch,
     type: 'inMemory',
     isActive: true,
@@ -119,46 +81,10 @@ export const PRESET_MCP_SERVERS = freezePresets([
     isTrusted: true
   },
   {
-    name: BuiltinMcpServerNames.difyKnowledge,
-    type: 'inMemory',
-    isActive: false,
-    env: {
-      DIFY_KEY: 'YOUR_DIFY_KEY'
-    },
-    shouldConfig: true,
-    provider: 'CherryAI',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
     name: BuiltinMcpServerNames.python,
     type: 'inMemory',
     isActive: false,
     provider: 'CherryAI',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
-    name: BuiltinMcpServerNames.didiMcp,
-    reference: 'https://mcp.didichuxing.com/',
-    type: 'inMemory',
-    isActive: false,
-    env: {
-      DIDI_API_KEY: 'YOUR_DIDI_API_KEY'
-    },
-    shouldConfig: true,
-    provider: 'CherryAI',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
-    name: BuiltinMcpServerNames.nowledgeMem,
-    reference: 'https://mem.nowledge.co/',
-    type: 'streamableHttp',
-    baseUrl: 'http://127.0.0.1:14242/mcp',
-    headers: { APP: 'Cherry Studio' },
-    isActive: false,
-    provider: 'Nowledge',
     installSource: 'builtin',
     isTrusted: true
   }

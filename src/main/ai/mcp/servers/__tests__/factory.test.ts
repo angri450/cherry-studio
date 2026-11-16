@@ -10,8 +10,7 @@ vi.mock('@application', async () => {
   return mockApplicationFactory({})
 })
 
-const { createBuiltinMcpEndpoint, getBuiltinAutoInstallEnv, resolveBuiltinExternalMcpServer } =
-  await import('../factory')
+const { createBuiltinMcpEndpoint, getBuiltinAutoInstallEnv } = await import('../factory')
 
 const server = (overrides: Partial<McpServer>): McpServer => ({
   id: 'id',
@@ -51,57 +50,6 @@ describe('getBuiltinAutoInstallEnv', () => {
     expect(getBuiltinAutoInstallEnv(other)).toEqual({})
     expect(getBuiltinAutoInstallEnv(collision)).toEqual({})
     expect(getBuiltinAutoInstallEnv(prefix)).toEqual({})
-  })
-})
-
-describe('resolveBuiltinExternalMcpServer', () => {
-  const qveris = (apiKey?: string) =>
-    server({
-      name: BuiltinMcpServerNames.qveris,
-      type: 'streamableHttp',
-      installSource: 'builtin',
-      env: { QVERIS_API_KEY: apiKey ?? '' }
-    })
-
-  it('attaches the configured QVeris API key as a fallback Bearer header', () => {
-    expect(resolveBuiltinExternalMcpServer(qveris('secret')).headers).toEqual({ Authorization: 'Bearer secret' })
-  })
-
-  it('connects QVeris through OAuth sign-in by default when no API key is configured', () => {
-    const resolved = resolveBuiltinExternalMcpServer(qveris())
-    expect(resolved.headers?.Authorization).toBeUndefined()
-    expect(resolved.type).toBe('streamableHttp')
-    expect(resolveBuiltinExternalMcpServer(qveris('   ')).headers?.Authorization).toBeUndefined()
-  })
-
-  it('resolves builtin HTTP endpoints and preserves configured headers', () => {
-    expect(
-      resolveBuiltinExternalMcpServer(
-        server({ name: BuiltinMcpServerNames.flomo, installSource: 'builtin', headers: { Existing: 'value' } })
-      )
-    ).toMatchObject({
-      type: 'streamableHttp',
-      baseUrl: 'https://flomoapp.com/mcp',
-      headers: { Existing: 'value', APP: 'Cherry Studio' }
-    })
-    expect(
-      resolveBuiltinExternalMcpServer(server({ name: BuiltinMcpServerNames.nowledgeMem, installSource: 'builtin' }))
-    ).toMatchObject({
-      type: 'streamableHttp',
-      baseUrl: 'http://127.0.0.1:14242/mcp',
-      headers: { APP: 'Cherry Studio' }
-    })
-  })
-
-  it('leaves non-builtin servers and manual name collisions unchanged', () => {
-    const custom = server({ name: 'custom-server', baseUrl: 'https://example.com/mcp' })
-    const collision = server({
-      name: BuiltinMcpServerNames.flomo,
-      installSource: 'manual',
-      baseUrl: 'https://example.com/custom-flomo'
-    })
-    expect(resolveBuiltinExternalMcpServer(custom)).toBe(custom)
-    expect(resolveBuiltinExternalMcpServer(collision)).toBe(collision)
   })
 })
 

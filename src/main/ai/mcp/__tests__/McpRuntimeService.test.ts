@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BaseService } from '@main/core/lifecycle'
 import type { McpServer } from '@shared/data/types/mcpServer'
-import { BuiltinMcpServerNames } from '@shared/utils/mcp'
 
 const mcpCatalogMock = vi.hoisted(() => ({
   clearSharedToolsCache: vi.fn(),
@@ -633,9 +632,9 @@ describe('McpRuntimeService connect retry gate', () => {
   it('uses a distinct secret-free key when the API key changes', () => {
     const service = new McpRuntimeService()
     const serverWith = (apiKey: string): McpServer => ({
-      id: 'qveris-server',
-      name: BuiltinMcpServerNames.qveris,
-      env: { QVERIS_API_KEY: apiKey },
+      id: 'api-key-server',
+      name: 'my-remote-server',
+      env: { MY_API_KEY: apiKey },
       isActive: true
     })
 

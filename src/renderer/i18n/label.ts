@@ -333,19 +333,13 @@ export const getFileFieldLabelKey = (key: string): string => {
 }
 
 const builtInMcpDescriptionKeyMap: Record<BuiltinMcpServerName, string> = {
-  [BuiltinMcpServerNames.flomo]: 'settings.mcp.builtinServersDescriptions.flomo',
-  [BuiltinMcpServerNames.qveris]: 'settings.mcp.builtinServersDescriptions.qveris',
   [BuiltinMcpServerNames.mcpAutoInstall]: 'settings.mcp.builtinServersDescriptions.mcp_auto_install',
   [BuiltinMcpServerNames.memory]: 'settings.mcp.builtinServersDescriptions.memory',
   [BuiltinMcpServerNames.sequentialThinking]: 'settings.mcp.builtinServersDescriptions.sequentialthinking',
-  [BuiltinMcpServerNames.braveSearch]: 'settings.mcp.builtinServersDescriptions.brave_search',
   [BuiltinMcpServerNames.fetch]: 'settings.mcp.builtinServersDescriptions.fetch',
   [BuiltinMcpServerNames.filesystem]: 'settings.mcp.builtinServersDescriptions.filesystem',
-  [BuiltinMcpServerNames.difyKnowledge]: 'settings.mcp.builtinServersDescriptions.dify_knowledge',
   [BuiltinMcpServerNames.python]: 'settings.mcp.builtinServersDescriptions.python',
-  [BuiltinMcpServerNames.didiMcp]: 'settings.mcp.builtinServersDescriptions.didi_mcp',
   [BuiltinMcpServerNames.browser]: 'settings.mcp.builtinServersDescriptions.browser',
-  [BuiltinMcpServerNames.nowledgeMem]: 'settings.mcp.builtinServersDescriptions.nowledge_mem',
   [BuiltinMcpServerNames.hub]: 'settings.mcp.builtinServersDescriptions.hub'
 } as const
 
