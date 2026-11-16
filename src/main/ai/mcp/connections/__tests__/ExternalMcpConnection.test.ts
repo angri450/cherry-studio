@@ -117,22 +117,19 @@ describe('ExternalMcpConnection transport fallback policy', () => {
     expect(externalMcpConnectionInternals.isTransportFallbackError(new Error('network unavailable'))).toBe(false)
   })
 
-  it('keeps OAuth enabled only for the built-in QVeris server when an API-key Bearer header is configured', () => {
-    const qveris: McpServer = {
-      id: 'qveris-builtin',
-      name: '@cherry/qveris',
-      installSource: 'builtin',
-      headers: { Authorization: 'Bearer fixture' },
-      isActive: true
-    }
-    expect(externalMcpConnectionInternals.prefersOAuth(qveris)).toBe(true)
-    expect(externalMcpConnectionInternals.prefersOAuth({ ...qveris, headers: {} })).toBe(true)
-    expect(externalMcpConnectionInternals.prefersOAuth({ ...qveris, installSource: 'manual' })).toBe(false)
-    expect(externalMcpConnectionInternals.prefersOAuth({ ...qveris, name: 'manual-server' })).toBe(false)
+  it('signs in through OAuth when the server carries no static credential', () => {
+    expect(externalMcpConnectionInternals.prefersOAuth({ headers: {} })).toBe(true)
+    expect(externalMcpConnectionInternals.prefersOAuth({ headers: { APP: 'Cherry Studio' } })).toBe(true)
   })
 
-  it('prefers OAuth tokens over QVeris API key fallback and never leaks the API key to OAuth endpoints', async () => {
-    const oauthDir = await fs.mkdtemp(path.join(os.tmpdir(), 'qveris-oauth-test-'))
+  it('authenticates with the header when the server carries one', () => {
+    expect(externalMcpConnectionInternals.prefersOAuth({ headers: { Authorization: 'Bearer fixture' } })).toBe(false)
+    // The header reaches here unnormalized, so the match is case-insensitive.
+    expect(externalMcpConnectionInternals.prefersOAuth({ headers: { authorization: 'Bearer fixture' } })).toBe(false)
+  })
+
+  it('signs in through OAuth when the server carries no static credential', async () => {
+    const oauthDir = await fs.mkdtemp(path.join(os.tmpdir(), 'oauth-test-'))
     const getPathSpy = vi
       .spyOn(application, 'getPath')
       .mockImplementation((key: string, filename?: string) =>
@@ -140,15 +137,14 @@ describe('ExternalMcpConnection transport fallback policy', () => {
           ? path.resolve(oauthDir, filename ?? '')
           : path.resolve('/mock', key, filename ?? '')
       )
-    const qverisUrl = 'https://mcp.qveris.ai/mcp'
-    const authIssuer = 'https://auth.qveris.ai'
-    const qverisServer: McpServer = {
-      id: 'qveris-1',
-      name: '@cherry/qveris',
-      installSource: 'builtin',
+    const oauthUrl = 'https://mcp.example.com/mcp'
+    const authIssuer = 'https://auth.example.com'
+    const oauthServer: McpServer = {
+      id: 'oauth-1',
+      name: 'oauth-server',
       type: 'streamableHttp',
-      baseUrl: qverisUrl,
-      headers: { APP: 'Cherry Studio', Authorization: 'Bearer fallback-api-key' },
+      baseUrl: oauthUrl,
+      headers: { APP: 'Cherry Studio' },
       isActive: true
     }
 
@@ -157,10 +153,9 @@ describe('ExternalMcpConnection transport fallback policy', () => {
       const mcpAuthHeaders: Array<string | null> = []
       const oauthAuthHeaders: Array<{ url: string; authorization: string | null }> = []
 
-      // 1. No cached OAuth token + server rejects fallback API key with 401 -> OAuth discovery runs
-      //    without leaking `Authorization: Bearer fallback-api-key` to discovery/registration/token endpoints.
+      // 1. A cached OAuth token is used and refreshed when it expires.
       const seedProvider = new McpOAuthClientProvider({
-        serverUrlHash: oauthServerUrlHash(qverisUrl),
+        serverUrlHash: oauthServerUrlHash(oauthUrl),
         configDir: oauthDir
       })
       await seedProvider.saveClientInformation(
@@ -182,14 +177,14 @@ describe('ExternalMcpConnection transport fallback policy', () => {
         const url = request.url
         const authHeader = request.headers.get('authorization')
 
-        if (url === qverisUrl) {
+        if (url === oauthUrl) {
           mcpAuthHeaders.push(authHeader)
           if (authHeader !== 'Bearer fresh-oauth-token') {
             return new Response(null, {
               status: 401,
               headers: {
                 'WWW-Authenticate':
-                  'Bearer resource_metadata="https://mcp.qveris.ai/.well-known/oauth-protected-resource/mcp"'
+                  'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"'
               }
             })
           }
@@ -197,8 +192,8 @@ describe('ExternalMcpConnection transport fallback policy', () => {
         }
 
         oauthAuthHeaders.push({ url, authorization: authHeader })
-        if (url === 'https://mcp.qveris.ai/.well-known/oauth-protected-resource/mcp') {
-          return Response.json({ resource: qverisUrl, authorization_servers: [authIssuer] })
+        if (url === 'https://mcp.example.com/.well-known/oauth-protected-resource/mcp') {
+          return Response.json({ resource: oauthUrl, authorization_servers: [authIssuer] })
         }
         if (url === `${authIssuer}/.well-known/oauth-authorization-server`) {
           return Response.json({
@@ -213,7 +208,7 @@ describe('ExternalMcpConnection transport fallback policy', () => {
           })
         }
         if (url === `${authIssuer}/oauth/token`) {
-          // Real QVeris AS rejects `/oauth/token` with 401 invalid_client if any Bearer header is present.
+          // A public-client AS rejects `/oauth/token` with 401 invalid_client if any Bearer header is present.
           if (authHeader) {
             return Response.json(
               { error: 'invalid_client', error_description: 'HTTP Basic client authentication is required' },
@@ -230,7 +225,7 @@ describe('ExternalMcpConnection transport fallback policy', () => {
       })
 
       const refreshedConnection = await createExternalMcpConnection({
-        server: qverisServer,
+        server: oauthServer,
         appVersion: '0.0.0-test',
         events,
         log: createLog(),
@@ -239,18 +234,18 @@ describe('ExternalMcpConnection transport fallback policy', () => {
       })
       try {
         expect((await refreshedConnection.listTools()).map((tool) => tool.name)).toContain('mx_quote')
-        // Cached OAuth token took priority over `fallback-api-key`, then refreshed cleanly to `fresh-oauth-token`.
+        // The cached token was used first and then refreshed cleanly.
         expect(mcpAuthHeaders[0]).toBe('Bearer expired-oauth-token')
         expect(mcpAuthHeaders).toContain('Bearer fresh-oauth-token')
-        expect(mcpAuthHeaders).not.toContain('Bearer fallback-api-key')
+        // No credential reaches the OAuth endpoints.
         expect(oauthAuthHeaders.length).toBeGreaterThan(0)
         expect(oauthAuthHeaders.every((entry) => entry.authorization === null)).toBe(true)
       } finally {
         await refreshedConnection.close()
       }
 
-      // 2. When no OAuth session exists yet, QVeris falls back to `QVERIS_API_KEY` on the MCP endpoint;
-      //    if that key is rejected with 401 in background mode, OAuth discovery still stays clean and yields UnauthorizedError.
+      // 2. With no OAuth session yet, the MCP endpoint is called without a credential and
+      //    the sign-in flow yields UnauthorizedError in background mode.
       await seedProvider.invalidateCredentials('all')
       mcpAuthHeaders.length = 0
       oauthAuthHeaders.length = 0
@@ -260,23 +255,20 @@ describe('ExternalMcpConnection transport fallback policy', () => {
         const url = request.url
         const authHeader = request.headers.get('authorization')
 
-        if (url === qverisUrl) {
+        if (url === oauthUrl) {
           mcpAuthHeaders.push(authHeader)
-          if (authHeader === 'Bearer valid-fallback-key') {
-            return fetchMcpHandler(handler, input, init)
-          }
           return new Response(null, {
             status: 401,
             headers: {
               'WWW-Authenticate':
-                'Bearer resource_metadata="https://mcp.qveris.ai/.well-known/oauth-protected-resource/mcp"'
+                'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"'
             }
           })
         }
 
         oauthAuthHeaders.push({ url, authorization: authHeader })
-        if (url === 'https://mcp.qveris.ai/.well-known/oauth-protected-resource/mcp') {
-          return Response.json({ resource: qverisUrl, authorization_servers: [authIssuer] })
+        if (url === 'https://mcp.example.com/.well-known/oauth-protected-resource/mcp') {
+          return Response.json({ resource: oauthUrl, authorization_servers: [authIssuer] })
         }
         if (url === `${authIssuer}/.well-known/oauth-authorization-server`) {
           return Response.json({
@@ -298,7 +290,7 @@ describe('ExternalMcpConnection transport fallback policy', () => {
 
       await expect(
         createExternalMcpConnection({
-          server: qverisServer,
+          server: oauthServer,
           appVersion: '0.0.0-test',
           events,
           log: createLog(),
@@ -306,22 +298,56 @@ describe('ExternalMcpConnection transport fallback policy', () => {
           connectTimeoutMs: 5_000
         })
       ).rejects.toSatisfy((err) => UnauthorizedError.isInstance(err))
-      expect(mcpAuthHeaders[0]).toBe('Bearer fallback-api-key')
+      expect(mcpAuthHeaders[0]).toBeNull()
       expect(oauthAuthHeaders.every((entry) => entry.authorization === null)).toBe(true)
+    } finally {
+      getPathSpy.mockRestore()
+      await handler.close()
+      await fs.rm(oauthDir, { recursive: true, force: true })
+    }
+  })
 
-      const fallbackConnection = await createExternalMcpConnection({
-        server: { ...qverisServer, headers: { APP: 'Cherry Studio', Authorization: 'Bearer valid-fallback-key' } },
+  it('authenticates with the static header and skips the sign-in flow', async () => {
+    const handler = createLegacyHandler()
+    const mcpAuthHeaders: Array<string | null> = []
+    let oauthRequests = 0
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      const url = request.url
+      if (url === 'https://mcp.example.com/mcp') {
+        mcpAuthHeaders.push(request.headers.get('authorization'))
+        return fetchMcpHandler(handler, input, init)
+      }
+      oauthRequests += 1
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    try {
+      const connection = await createExternalMcpConnection({
+        server: {
+          id: 'static-1',
+          name: 'static-server',
+          type: 'streamableHttp',
+          baseUrl: 'https://mcp.example.com/mcp',
+          headers: { APP: 'Cherry Studio', Authorization: 'Bearer static-key' },
+          isActive: true
+        },
         appVersion: '0.0.0-test',
         events,
         log: createLog(),
         allowInteractiveAuthorization: false,
         connectTimeoutMs: 5_000
       })
-      await fallbackConnection.close()
+      try {
+        expect((await connection.listTools()).map((tool) => tool.name)).toContain('mx_quote')
+        expect(mcpAuthHeaders.every((header) => header === 'Bearer static-key')).toBe(true)
+        expect(oauthRequests).toBe(0)
+      } finally {
+        await connection.close()
+      }
     } finally {
-      getPathSpy.mockRestore()
       await handler.close()
-      await fs.rm(oauthDir, { recursive: true, force: true })
     }
   })
 })

@@ -27,7 +27,7 @@ import * as z from 'zod'
 import { application } from '@application'
 import { mcpServerService } from '@data/services/McpServerService'
 import { loggerService } from '@logger'
-import { createBuiltinMcpEndpoint, resolveBuiltinExternalMcpServer } from '@main/ai/mcp/servers/factory'
+import { createBuiltinMcpEndpoint } from '@main/ai/mcp/servers/factory'
 import { TraceMethod, withSpanFunc } from '@main/ai/observability'
 import { BaseService, DependsOn, Emitter, type Event, Injectable, Phase, ServicePhase } from '@main/core/lifecycle'
 import { WindowType } from '@main/core/window/types'
@@ -408,7 +408,7 @@ export class McpRuntimeService extends BaseService {
     }
 
     return createExternalMcpConnection({
-      server: resolveBuiltinExternalMcpServer(server),
+      server,
       oauthCoordinator: this.oauthCoordinator,
       allowInteractiveAuthorization: canAuthorizeInteractively(requestContext),
       authorizationWindowId: requestContext?.windowId,

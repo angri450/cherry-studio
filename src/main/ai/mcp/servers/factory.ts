@@ -3,7 +3,7 @@ import type { McpServer as McpProtocolServer } from '@modelcontextprotocol/serve
 import { application } from '@application'
 import { loggerService } from '@logger'
 import type { McpServer } from '@shared/data/types/mcpServer'
-import { type BuiltinMcpServerName, BuiltinMcpServerNames, isBuiltinMcpServerName } from '@shared/utils/mcp'
+import { type BuiltinMcpServerName, BuiltinMcpServerNames } from '@shared/utils/mcp'
 
 const logger = loggerService.withContext('McpFactory')
 
@@ -17,35 +17,6 @@ const statelessEndpoint = (createServer: () => McpProtocolServer): BuiltinMcpEnd
   close: async () => undefined
 })
 
-export function resolveBuiltinExternalMcpServer(server: McpServer): McpServer {
-  if (server.installSource !== 'builtin' || !isBuiltinMcpServerName(server.name)) return server
-
-  switch (server.name) {
-    case BuiltinMcpServerNames.nowledgeMem:
-      return {
-        ...server,
-        type: 'streamableHttp',
-        baseUrl: 'http://127.0.0.1:14242/mcp',
-        headers: { ...server.headers, APP: 'Cherry Studio' }
-      }
-    case BuiltinMcpServerNames.flomo:
-      return {
-        ...server,
-        type: 'streamableHttp',
-        baseUrl: 'https://flomoapp.com/mcp',
-        headers: { ...server.headers, APP: 'Cherry Studio' }
-      }
-    case BuiltinMcpServerNames.qveris: {
-      // QVeris prefers MCP OAuth sign-in; QVERIS_API_KEY is only an optional fallback credential.
-      const resolved = { ...server, type: 'streamableHttp' as const }
-      const apiKey = server.env?.QVERIS_API_KEY?.trim()
-      return apiKey ? { ...resolved, headers: { ...resolved.headers, Authorization: `Bearer ${apiKey}` } } : resolved
-    }
-    default:
-      return server
-  }
-}
-
 export async function createBuiltinMcpEndpoint(
   name: BuiltinMcpServerName,
   args: string[] = [],
@@ -57,10 +28,6 @@ export async function createBuiltinMcpEndpoint(
       return (await import('./memory')).createMemoryEndpoint(envs.MEMORY_FILE_PATH)
     case BuiltinMcpServerNames.sequentialThinking:
       return (await import('./sequentialthinking')).createSequentialThinkingEndpoint()
-    case BuiltinMcpServerNames.braveSearch: {
-      const { createBraveSearchServer } = await import('./braveSearch')
-      return statelessEndpoint(() => createBraveSearchServer(envs.BRAVE_API_KEY))
-    }
     case BuiltinMcpServerNames.fetch: {
       const { createFetchServer } = await import('./fetch')
       return statelessEndpoint(createFetchServer)
@@ -69,17 +36,9 @@ export async function createBuiltinMcpEndpoint(
       const { createFileSystemServer, resolveFilesystemBaseDir } = await import('./filesystem')
       return statelessEndpoint(() => createFileSystemServer(resolveFilesystemBaseDir(args, envs)))
     }
-    case BuiltinMcpServerNames.difyKnowledge: {
-      const { createDifyKnowledgeServer } = await import('./difyKnowledge')
-      return statelessEndpoint(() => createDifyKnowledgeServer(envs.DIFY_KEY, args))
-    }
     case BuiltinMcpServerNames.python: {
       const { createPythonServer } = await import('./python')
       return statelessEndpoint(createPythonServer)
-    }
-    case BuiltinMcpServerNames.didiMcp: {
-      const { createDiDiMcpServer } = await import('./didiMcp')
-      return statelessEndpoint(() => createDiDiMcpServer(envs.DIDI_API_KEY))
     }
     case BuiltinMcpServerNames.browser: {
       return application.get('BrowserSessionService').createMcpEndpoint()
@@ -107,12 +66,9 @@ export function hasInMemoryImplementation(name: string): boolean {
   return [
     BuiltinMcpServerNames.memory,
     BuiltinMcpServerNames.sequentialThinking,
-    BuiltinMcpServerNames.braveSearch,
     BuiltinMcpServerNames.fetch,
     BuiltinMcpServerNames.filesystem,
-    BuiltinMcpServerNames.difyKnowledge,
     BuiltinMcpServerNames.python,
-    BuiltinMcpServerNames.didiMcp,
     BuiltinMcpServerNames.browser
   ].some((builtin) => builtin === name)
 }

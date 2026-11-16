@@ -1,18 +1,12 @@
 import {
-  BookOpen,
   BrainCircuit,
-  Car,
   CodeXml,
-  Database,
   ExternalLink,
   Folder,
   Globe,
   Loader2,
-  NotebookPen,
   PackagePlus,
   Plus,
-  Search,
-  SearchCode,
   Settings2,
   Workflow,
   Wrench
@@ -54,18 +48,12 @@ import MarketplaceMcpProvider from './MarketplaceMcpProvider'
 import { providers as providerConfigs } from './providers/config'
 
 const builtinMcpIcons: Partial<Record<McpServerPreset['name'], LucideIcon>> = {
-  [BuiltinMcpServerNames.flomo]: NotebookPen,
-  [BuiltinMcpServerNames.qveris]: SearchCode,
   [BuiltinMcpServerNames.mcpAutoInstall]: PackagePlus,
   [BuiltinMcpServerNames.sequentialThinking]: Workflow,
   [BuiltinMcpServerNames.fetch]: Globe,
   [BuiltinMcpServerNames.memory]: BrainCircuit,
   [BuiltinMcpServerNames.filesystem]: Folder,
-  [BuiltinMcpServerNames.braveSearch]: Search,
-  [BuiltinMcpServerNames.difyKnowledge]: BookOpen,
-  [BuiltinMcpServerNames.python]: CodeXml,
-  [BuiltinMcpServerNames.didiMcp]: Car,
-  [BuiltinMcpServerNames.nowledgeMem]: Database
+  [BuiltinMcpServerNames.python]: CodeXml
 }
 
 function BuiltinMcpIcon({ name, large = false }: { name: McpServerPreset['name']; large?: boolean }) {

@@ -19,7 +19,6 @@ import { t } from '@main/i18n'
 import { defaultAppHeaders, mergeHeaders } from '@main/utils/http'
 import { removeEnvProxy } from '@main/utils/processRunner'
 import type { McpServer, McpServerType } from '@shared/data/types/mcpServer'
-import { BuiltinMcpServerNames } from '@shared/utils/mcp'
 
 import { buildStdioEnvironment } from '../mcpLaunch'
 import { resolveStdioLaunch } from '../mcpStdioLaunch'
@@ -51,11 +50,10 @@ function transportCandidates(server: McpServer): McpServerType[] | null {
 }
 
 /**
- * QVeris prefers OAuth sign-in; its static Bearer header (from QVERIS_API_KEY) is only a
- * fallback credential, so the OAuth provider stays attached and a cached token overrides it.
+ * A server with no static credential signs in through OAuth; one that carries an
+ * Authorization header authenticates with that header instead.
  */
-function prefersOAuth(server: Pick<McpServer, 'installSource' | 'name' | 'headers'>): boolean {
-  if (server.installSource === 'builtin' && server.name === BuiltinMcpServerNames.qveris) return true
+function prefersOAuth(server: Pick<McpServer, 'headers'>): boolean {
   // `headers` reaches here unnormalized, so match Authorization case-insensitively.
   return !Object.keys(server.headers ?? {}).some((key) => key.toLowerCase() === 'authorization')
 }
